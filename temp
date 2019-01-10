@@ -1,0 +1,17 @@
+request post (name -> id)
+
+accept-encoding:txt
+content-type:application/json
+{"queryString":"\"Shahal abbo\"","page":1,"pageSize":10,"sort":"relevance","authors":[],"coAuthors":[],"venues":[],"facets":{},"yearFilter":null,"requireViewablePdf":false,"publicationTypes":[]}
+
+handle prof. dr.
+
+
+id->articles:
+https://api.semanticscholar.org/v1/author/1805894
+
+all names:
+http://www.yissum.co.il/find-experts?k=&rk=&tag=
+
+website:
+https://www.semanticscholar.org/search?q=Humorous%20hebrew%20university&sort=relevance
