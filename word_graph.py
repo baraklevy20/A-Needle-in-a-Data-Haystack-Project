@@ -24,7 +24,7 @@ def stem_word_list(text):
     return [stemmer.stem(word) for word in tokens if word not in english_stopwords]
 
 def generate_word_graph():
-    articles = json.load(open('articles.json', 'rb'))['articles']
+    articles = json.load(open('random_articles.json', 'rb'))['articles']
 
     # articles[0] = "barak tomer mazor tomer banana"
     # articles[1] = "apple pens mazor"

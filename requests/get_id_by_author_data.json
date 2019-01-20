@@ -1,0 +1,9 @@
+{
+  "queryString":"[Name of the author here]",
+  "page":1,
+  "pageSize":10,
+  "sort":"relevance",
+  "authors":[],
+  "coAuthors":[],
+  "venues":[]
+}
