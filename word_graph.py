@@ -23,13 +23,19 @@ def stem_word_list(text):
 
     return [stemmer.stem(word) for word in tokens if word not in english_stopwords]
 
-def generate_word_graph():
-    articles = json.load(open('data/random_articles.json', 'rb'))['articles']
 
-    # articles[0] = "barak tomer mazor tomer banana"
+def generate_word_graph():
+    temp_articles = list(json.load(open('data/researchers_articles.json')).values())
+    articles = []
+    for article_list in temp_articles:
+        articles += article_list
+    # articles += json.load(open('data/random_articles.json', 'rb'))['articles']
+
+    # articles[0] = "barak barak barak tomer mazor tomer banana"
     # articles[1] = "apple pens mazor"
 
     G = nx.Graph()
+    # for article in articles[0:2]:
     for i, article in enumerate(articles):
         print(str(i) + '/' + str(len(articles)))
         words = stem_word_list(article)
@@ -51,9 +57,18 @@ def generate_word_graph():
                     else:
                         G[w1][w2]['weight'] += 0.5
 
-    for edge in G.edges:
-        G[edge[0]][edge[1]]['weight'] /= max(G.node[edge[0]]['weight'], G.node[edge[1]]['weight'])
+    # count = 0
+    # for edge in G.edges:
+    #     G[edge[0]][edge[1]]['weight'] /= max(G.node[edge[0]]['weight'], G.node[edge[1]]['weight'])
+    #
+    #     if G[edge[0]][edge[1]]['weight'] > 0.1 and G[edge[0]][edge[1]]['weight'] < 1:
+    #         count += 1
+    # print (f"{count}/{len(G.edges)}")
+        # G[edge[0]][edge[1]]['weight'] /= G.node[edge[0]]['weight'] * G.node[edge[1]]['weight']
 
+
+    # if G[edge[0]][edge[1]]['weight'] > 1:
+    #     print('hi2')
 
     # G.add_node('avi')
     # G.add_edge('avi', 'mazor', weight=1)
@@ -68,12 +83,21 @@ def get_word_similarity(G, word1, word2):
     if not G.has_node(word1) or not G.has_node(word2):
         return 0
 
-    shortest_path = nx.shortest_path(G, word1, word2)
+    try:
+        shortest_path = nx.shortest_path(G, word1, word2)
+    except:
+        return 0
+
+    if len(shortest_path) == 1:
+        return 1
+
     sum = 0
 
     for i in range(len(shortest_path) - 1):
         sum += G[shortest_path[i]][shortest_path[i + 1]]['weight']
 
+    # if sum / (len(shortest_path) - 1) > 1:
+    #     print('hi')
     return sum / (len(shortest_path) - 1)
 
 
@@ -83,24 +107,22 @@ def get_article_similarity(G, article1, article2):
     articles1_words = stem_word_list(article1)
     articles2_words = stem_word_list(article2)
 
-    not_found_words = 0
+    if len(articles2_words) > len(articles1_words):
+        temp = articles1_words
+        articles1_words = articles2_words
+        articles2_words = temp
 
     for word1 in articles1_words:
+        max_score = 0
         for word2 in articles2_words:
-            if word1 == word2:
-                weight_sum += 1
-            else:
-                current_similarity = get_word_similarity(G, word1, word2)
-                if current_similarity != 0:
-                    weight_sum += current_similarity
-                else:
-                    not_found_words += 1
+            current_similarity = get_word_similarity(G, word1, word2)
 
-    if not_found_words == len(articles1_words) * len(articles2_words):
-        # print('no words')
-        return 0
-    return weight_sum / (len(articles1_words) * len(articles2_words) - not_found_words)  # todo why not this
-    # return weight_sum / len(set(articles1_words) | set(articles2_words))
+            if max_score < current_similarity:
+                max_score = current_similarity
+
+        weight_sum += max_score
+
+    return weight_sum / (len(articles1_words))
 
 
 G = generate_word_graph()
@@ -138,21 +160,27 @@ researchers_articles = json.load(open('data/researchers_articles.json', encoding
 # Avner Adin, Yona Chen - Different department, same faculty (SOIL AND WATER SCIENCES)
 # Omri Abend, Dafna Shahaf, Sara Cohen - Different faculty
 researcher1 = 'Shahal Abbo'
-researchers2 = ['Shahal Abbo',
-                'Avigdor Cahaner', 'Arie Altman',
-                'Saul Burdman', 'Shay Covo',
-                'Avner Adin', 'Yona Chen',
-                'Omri Abend', 'Dafna Shahaf', 'Sara Cohen']
+# researchers2 = ['Eyal Fridman', 'Smadar Harpaz Saad', 'Raphael Goren']
+researchers2 = ['Sha''Eyal Fridman', 'Smadar Harpaz Saad', 'Raphael Goren', 'Matan Gavish', 'Gil Segev']
+# researchers2 = ['Matan Gavish', 'Gil Segev', 'Sara Cohen']
+# researchers2 = ['Shahal Abbo',
+#                 'Avigdor Cahaner', 'Arie Altman',
+#                 'Saul Burdman', 'Shay Covo',
+#                 'Avner Adin', 'Yona Chen',
+#                 'Omri Abend', 'Dafna Shahaf', 'Sara Cohen']
 
 for researcher2 in researchers2:
     max_score = 0
+    best_article1, best_article2 = '', ''
     for article1 in researchers_articles[researcher1]:
         for article2 in researchers_articles[researcher2]:
             score = get_article_similarity(G, article1, article2)
 
             if max_score < score:
                 max_score = score
-    print(f'Best score of {researcher1} and {researcher2} is {max_score}')
+                best_article1 = article1
+                best_article2 = article2
+    print(f'Best score of {researcher1} and {researcher2} is {max_score}:\t\t{best_article1}\t\t{best_article2}')
 
 # print(get_article_similarity(G, 'tomer tomer', 'barak mazor'))
 # print(get_article_similarity(G, 'high soil acidity, very low of nutrient availability  especially NPK', 'fruit trees agricultural'))
