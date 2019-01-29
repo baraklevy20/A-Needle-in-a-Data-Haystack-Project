@@ -29,7 +29,7 @@ def generate_word_graph():
     articles = []
     for article_list in temp_articles:
         articles += article_list
-    articles += json.load(open('data/random_articles_big.json', 'rb'))['articles']
+    articles += json.load(open('data/random_articles.json', 'rb'))['articles']
 
     # articles[0] = "barak barak barak tomer mazor tomer banana"
     # articles[1] = "apple pens mazor"
@@ -180,28 +180,64 @@ researchers_articles = json.load(open('data/researchers_articles.json', encoding
 # Saul Burdman, Shay Covo = Different department, same faculty (PLANT PATHOLOGY AND MICROBIOLOGY)
 # Avner Adin, Yona Chen - Different department, same faculty (SOIL AND WATER SCIENCES)
 # Omri Abend, Dafna Shahaf, Sara Cohen - Different faculty
-researcher1 = 'Shahal Abbo'
+# researcher1 = 'Shahal Abbo'
+researcher1 = 'Dafna Shahaf'
+# researcher1 = 'Amir Shmueli'
 # researchers2 = ['Eyal Fridman', 'Smadar Harpaz Saad', 'Raphael Goren']
 # researchers2 = ['Sha''Eyal Fridman', 'Smadar Harpaz Saad', 'Raphael Goren', 'Matan Gavish', 'Gil Segev']
 # researchers2 = ['Matan Gavish', 'Gil Segev', 'Sara Cohen']
-researchers2 = ['Shahal Abbo',
-                'Avigdor Cahaner', 'Arie Altman',
-                'Saul Burdman', 'Shay Covo',
-                'Avner Adin', 'Yona Chen',
-                'Omri Abend', 'Dafna Shahaf', 'Matan Gavish']
+# researchers2 = ['Shahal Abbo',
+#                 'Avigdor Cahaner', 'Arie Altman',
+#                 'Saul Burdman', 'Shay Covo',
+#                 'Avner Adin', 'Yona Chen',
+#                 'Omri Abend', 'Dafna Shahaf', 'Matan Gavish']
 
-for researcher2 in researchers2:
+cs_researchers = ['Dafna Shahaf', 'Omri Abend', 'Dorit Aharonov', 'Yair Bartal', 'Tsevi Beatus', 'Michael Ben-Or', 'Amit Daniely',
+                  'Guy Kindler', 'Yuval Kochman', 'Orna Kupferman', 'Katrina Ligett', 'Scott Kirkpatrick']
+agri_researchers = ['Zach Adam', 'Arie Altman', 'Avigdor Cahaner', 'Idan Efroni', 'Rivka Elbaum', 'Yonatan Elkind', 'Eyal Fridman',
+                    'Eliezer Goldschmidt', 'Raphael Goren', 'Tamar Friedlander', 'Smadar Harpaz Saad', 'Shimon Lavee']
+cs_avg = []
+agri_avg = []
+
+for researcher2 in cs_researchers:
     max_score = 0
     best_article1, best_article2 = '', ''
+    score = 0
+    print(researcher2)
     for article1 in researchers_articles[researcher1]:
         for article2 in researchers_articles[researcher2]:
-            score = get_article_similarity(G, article1, article2)
+            score += get_article_similarity(G, article1, article2)
 
             if max_score < score:
                 max_score = score
                 best_article1 = article1
                 best_article2 = article2
-    print(f'Best score of {researcher1} and {researcher2} is {max_score}:\t\t{best_article1}\t\t{best_article2}')
+    # cs_avg.append(score / len(researchers_articles[researcher1]) / len(researchers_articles[researcher2]))
+    cs_avg.append(max_score)
+    # print(f'Best score of {researcher1} and {researcher2} is {100 * score / len(researchers_articles[researcher1]) / len(researchers_articles[researcher2])}')
+    # print(f'Best score of {researcher1} and {researcher2} is {max_score}:\t\t{best_article1}\t\t{best_article2}')
+
+for researcher2 in agri_researchers:
+    max_score = 0
+    best_article1, best_article2 = '', ''
+    score = 0
+    print(researcher2)
+    for article1 in researchers_articles[researcher1]:
+        for article2 in researchers_articles[researcher2]:
+            score += get_article_similarity(G, article1, article2)
+
+            if max_score < score:
+                max_score = score
+                best_article1 = article1
+                best_article2 = article2
+
+    # agri_avg.append(score / len(researchers_articles[researcher1]) / len(researchers_articles[researcher2]))
+    agri_avg.append(max_score)
+#
+plt.figure()
+plt.plot(cs_avg, 'bo')
+plt.plot(agri_avg, 'ro')
+plt.show()
 
 # print(get_article_similarity(G, 'tomer tomer', 'barak mazor'))
 # print(get_article_similarity(G, 'high soil acidity, very low of nutrient availability  especially NPK', 'fruit trees agricultural'))
@@ -210,3 +246,14 @@ for researcher2 in researchers2:
 # print(get_article_similarity(G, 'physical characteristicsare among propertiesaffecting the susceptibility to erosion', 'high soil acidity, very low of nutrient availability  especially NPK'))
 # print(get_article_similarity(G, 'This paper focuses on a new way for students to deepen their knowledge in image processing', 'high soil acidity, very low of nutrient availability  especially NPK'))
 # print(get_article_similarity(G, 'This paper focuses on a new way for students to deepen their knowledge in image processing', 'In the engineering curriculum, remote labs'))
+
+
+# matches = []
+# for researcher in researchers_in_other_faculties:
+#     score = 0
+#     for article1 in dafna_articles:
+#         for article2 in researcher_articles:
+#             score = max(get_article_similarity(G, article1, article2), score)
+#     matches.append(score)
+#
+# # take researchers with best 3 scores
