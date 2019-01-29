@@ -25,11 +25,11 @@ def stem_word_list(text):
 
 
 def generate_word_graph():
-    temp_articles = list(json.load(open('data/researchers_articles.json')).values())
+    temp_articles = list(json.load(open('data/researchers_articles.json', encoding='utf-8')).values())
     articles = []
     for article_list in temp_articles:
         articles += article_list
-    # articles += json.load(open('data/random_articles.json', 'rb'))['articles']
+    articles += json.load(open('data/random_articles_big.json', 'rb'))['articles']
 
     # articles[0] = "barak barak barak tomer mazor tomer banana"
     # articles[1] = "apple pens mazor"
@@ -37,7 +37,8 @@ def generate_word_graph():
     G = nx.Graph()
     # for article in articles[0:2]:
     for i, article in enumerate(articles):
-        print(str(i) + '/' + str(len(articles)))
+        if i % (int(len(articles) / 10)) == 0:
+            print(str(i) + '/' + str(len(articles)))
         words = stem_word_list(article)
         # tokens_count = Counter(words)
         # print(tokens_count.most_common(20))
@@ -49,23 +50,25 @@ def generate_word_graph():
             else:
                 G.node[word]['weight'] += 1
 
-        for w1 in words:
-            for w2 in words:
-                if w1 != w2:
-                    if not G.has_edge(w1, w2):
-                        G.add_edge(w1, w2, weight=0.5)
-                    else:
-                        G[w1][w2]['weight'] += 0.5
+        # for w1 in words:
+        #     for w2 in words:
+        #         if w1 != w2:
+        #             if not G.has_edge(w1, w2):
+        #                 G.add_edge(w1, w2, weight=0.5)
+        #             else:
+        #                 G[w1][w2]['weight'] += 0.5
 
     # count = 0
-    # for edge in G.edges:
-    #     G[edge[0]][edge[1]]['weight'] /= max(G.node[edge[0]]['weight'], G.node[edge[1]]['weight'])
+    for edge in G.edges:
+        G[edge[0]][edge[1]]['weight'] /= G.node[edge[0]]['weight'] * G.node[edge[1]]['weight']
+    #         G[edge[0]][edge[1]]['weight'] /= (1 + np.log(max(G.node[edge[0]]['weight'], G.node[edge[1]]['weight'])))
+
+    print('graph generated')
     #
     #     if G[edge[0]][edge[1]]['weight'] > 0.1 and G[edge[0]][edge[1]]['weight'] < 1:
     #         count += 1
     # print (f"{count}/{len(G.edges)}")
-        # G[edge[0]][edge[1]]['weight'] /= G.node[edge[0]]['weight'] * G.node[edge[1]]['weight']
-
+    # G[edge[0]][edge[1]]['weight'] /= G.node[edge[0]]['weight'] * G.node[edge[1]]['weight']
 
     # if G[edge[0]][edge[1]]['weight'] > 1:
     #     print('hi2')
@@ -83,19 +86,21 @@ def get_word_similarity(G, word1, word2):
     if not G.has_node(word1) or not G.has_node(word2):
         return 0
 
+    if word1 == word2:
+        return 1 / G.node[word1]['weight']
+
     try:
         shortest_path = nx.shortest_path(G, word1, word2)
     except:
         return 0
 
-    if len(shortest_path) == 1:
-        return 1
-
     sum = 0
 
     for i in range(len(shortest_path) - 1):
         sum += G[shortest_path[i]][shortest_path[i + 1]]['weight']
-
+    # todo having the same article will always return 1/total_appearances.
+    # to normalize it we might need to multiple by the total frequency of all of the words in the article to get this value to 1
+    # otherwise articles with more frequent words will have higher weight
     # if sum / (len(shortest_path) - 1) > 1:
     #     print('hi')
     return sum / (len(shortest_path) - 1)
@@ -122,10 +127,26 @@ def get_article_similarity(G, article1, article2):
 
         weight_sum += max_score
 
-    return weight_sum / (len(articles1_words))
+    return weight_sum / len(articles1_words)
 
 
+def sum_frequency(G, article1_words, article2_words):
+    sum = 0
+
+    for word1 in article1_words:
+        sum += 1 / G.node[word1]['weight']
+
+    for word2 in article2_words:
+        sum += 1 / G.node[word2]['weight']
+
+    return sum
+
+
+# G = nx.read_gml('data/word_graph.json')
+# print('done reading the graph')
 G = generate_word_graph()
+nx.write_gml(G, 'data/word_graph.json')
+print('done writing the graph')
 # edge_labels = dict([((u,v,),d['weight'])
 #                  for u,v,d in G.edges(data=True)])
 # pos=nx.spring_layout(G)
@@ -161,13 +182,13 @@ researchers_articles = json.load(open('data/researchers_articles.json', encoding
 # Omri Abend, Dafna Shahaf, Sara Cohen - Different faculty
 researcher1 = 'Shahal Abbo'
 # researchers2 = ['Eyal Fridman', 'Smadar Harpaz Saad', 'Raphael Goren']
-researchers2 = ['Sha''Eyal Fridman', 'Smadar Harpaz Saad', 'Raphael Goren', 'Matan Gavish', 'Gil Segev']
+# researchers2 = ['Sha''Eyal Fridman', 'Smadar Harpaz Saad', 'Raphael Goren', 'Matan Gavish', 'Gil Segev']
 # researchers2 = ['Matan Gavish', 'Gil Segev', 'Sara Cohen']
-# researchers2 = ['Shahal Abbo',
-#                 'Avigdor Cahaner', 'Arie Altman',
-#                 'Saul Burdman', 'Shay Covo',
-#                 'Avner Adin', 'Yona Chen',
-#                 'Omri Abend', 'Dafna Shahaf', 'Sara Cohen']
+researchers2 = ['Shahal Abbo',
+                'Avigdor Cahaner', 'Arie Altman',
+                'Saul Burdman', 'Shay Covo',
+                'Avner Adin', 'Yona Chen',
+                'Omri Abend', 'Dafna Shahaf', 'Matan Gavish']
 
 for researcher2 in researchers2:
     max_score = 0
