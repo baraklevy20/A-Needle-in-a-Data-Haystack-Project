@@ -29,7 +29,7 @@ def generate_word_graph():
     articles = []
     for article_list in temp_articles:
         articles += article_list
-    articles += json.load(open('data/random_articles.json', 'rb'))['articles']
+    # articles += json.load(open('data/random_articles.json', 'rb'))['articles']
 
     # articles[0] = "barak barak barak tomer mazor tomer banana"
     # articles[1] = "apple pens mazor"
@@ -45,6 +45,9 @@ def generate_word_graph():
 
         # todo take only most frequent
         for word in words:
+            if len(word) < 2:
+                continue
+
             if not G.has_node(word):
                 G.add_node(word, weight=1)
             else:
@@ -82,6 +85,30 @@ def generate_word_graph():
     return G
 
 
+def get_shortest_path(G, word1, word2):
+    try:
+        shortest_paths = list(nx.all_shortest_paths(G, word1, word2))
+
+    except:
+        return 0, 0
+
+
+    max_path = None
+    for shortest_path in shortest_paths:
+        sum = 0
+        for i in range(len(shortest_path) - 1):
+            sum += G[shortest_path[i]][shortest_path[i + 1]]['weight']
+
+        if max_path is None or max_path[0] < sum:
+            max_path = (sum / ((len(shortest_path) - 1) ** 2), len(shortest_path) - 1)
+
+    # todo having the same article will always return 1/total_appearances.
+    # to normalize it we might need to multiple by the total frequency of all of the words in the article to get this value to 1
+    # otherwise articles with more frequent words will have higher weight
+    # if sum / (len(shortest_path) - 1) > 1:
+    #     print('hi')
+    return max_path
+
 def get_word_similarity(G, word1, word2):
     if not G.has_node(word1) or not G.has_node(word2):
         return 0
@@ -89,21 +116,17 @@ def get_word_similarity(G, word1, word2):
     if word1 == word2:
         return 1 / G.node[word1]['weight']
 
-    try:
-        shortest_path = nx.shortest_path(G, word1, word2)
-    except:
-        return 0
+    shortest1 = get_shortest_path(G, word1, word2)
 
-    sum = 0
+    if shortest1[1] != 1:
+        return shortest1[0]
 
-    for i in range(len(shortest_path) - 1):
-        sum += G[shortest_path[i]][shortest_path[i + 1]]['weight']
-    # todo having the same article will always return 1/total_appearances.
-    # to normalize it we might need to multiple by the total frequency of all of the words in the article to get this value to 1
-    # otherwise articles with more frequent words will have higher weight
-    # if sum / (len(shortest_path) - 1) > 1:
-    #     print('hi')
-    return sum / (len(shortest_path) - 1)
+    weight = G.node[word1]['weight']
+    G.remove_edge(word1, word2)
+    shortest2 = get_shortest_path(G, word1, word2)
+    G.add_edge(word1, word2, weight=weight)
+
+    return (shortest1[0] + shortest2[0]) / 2
 
 
 def get_article_similarity(G, article1, article2):
@@ -155,7 +178,7 @@ print('done writing the graph')
 # plt.show()
 
 
-researchers_articles = json.load(open('data/researchers_articles.json', encoding='utf-8'))
+# researchers_articles = json.load(open('data/researchers_articles.json', encoding='utf-8'))
 
 # Should be very high (same person)
 # print(get_article_similarity(G, researchers_articles['Shahal Abbo'][0], researchers_articles['Shahal Abbo'][1]))
@@ -181,7 +204,7 @@ researchers_articles = json.load(open('data/researchers_articles.json', encoding
 # Avner Adin, Yona Chen - Different department, same faculty (SOIL AND WATER SCIENCES)
 # Omri Abend, Dafna Shahaf, Sara Cohen - Different faculty
 # researcher1 = 'Shahal Abbo'
-researcher1 = 'Dafna Shahaf'
+# researcher1 = 'Dafna Shahaf'
 # researcher1 = 'Amir Shmueli'
 # researchers2 = ['Eyal Fridman', 'Smadar Harpaz Saad', 'Raphael Goren']
 # researchers2 = ['Sha''Eyal Fridman', 'Smadar Harpaz Saad', 'Raphael Goren', 'Matan Gavish', 'Gil Segev']
@@ -192,52 +215,52 @@ researcher1 = 'Dafna Shahaf'
 #                 'Avner Adin', 'Yona Chen',
 #                 'Omri Abend', 'Dafna Shahaf', 'Matan Gavish']
 
-cs_researchers = ['Dafna Shahaf', 'Omri Abend', 'Dorit Aharonov', 'Yair Bartal', 'Tsevi Beatus', 'Michael Ben-Or', 'Amit Daniely',
-                  'Guy Kindler', 'Yuval Kochman', 'Orna Kupferman', 'Katrina Ligett', 'Scott Kirkpatrick']
-agri_researchers = ['Zach Adam', 'Arie Altman', 'Avigdor Cahaner', 'Idan Efroni', 'Rivka Elbaum', 'Yonatan Elkind', 'Eyal Fridman',
-                    'Eliezer Goldschmidt', 'Raphael Goren', 'Tamar Friedlander', 'Smadar Harpaz Saad', 'Shimon Lavee']
-cs_avg = []
-agri_avg = []
-
-for researcher2 in cs_researchers:
-    max_score = 0
-    best_article1, best_article2 = '', ''
-    score = 0
-    print(researcher2)
-    for article1 in researchers_articles[researcher1]:
-        for article2 in researchers_articles[researcher2]:
-            score += get_article_similarity(G, article1, article2)
-
-            if max_score < score:
-                max_score = score
-                best_article1 = article1
-                best_article2 = article2
-    # cs_avg.append(score / len(researchers_articles[researcher1]) / len(researchers_articles[researcher2]))
-    cs_avg.append(max_score)
-    # print(f'Best score of {researcher1} and {researcher2} is {100 * score / len(researchers_articles[researcher1]) / len(researchers_articles[researcher2])}')
-    # print(f'Best score of {researcher1} and {researcher2} is {max_score}:\t\t{best_article1}\t\t{best_article2}')
-
-for researcher2 in agri_researchers:
-    max_score = 0
-    best_article1, best_article2 = '', ''
-    score = 0
-    print(researcher2)
-    for article1 in researchers_articles[researcher1]:
-        for article2 in researchers_articles[researcher2]:
-            score += get_article_similarity(G, article1, article2)
-
-            if max_score < score:
-                max_score = score
-                best_article1 = article1
-                best_article2 = article2
-
-    # agri_avg.append(score / len(researchers_articles[researcher1]) / len(researchers_articles[researcher2]))
-    agri_avg.append(max_score)
+# cs_researchers = ['Dafna Shahaf', 'Omri Abend', 'Dorit Aharonov', 'Yair Bartal', 'Tsevi Beatus', 'Michael Ben-Or', 'Amit Daniely',
+#                   'Guy Kindler', 'Yuval Kochman', 'Orna Kupferman', 'Katrina Ligett', 'Scott Kirkpatrick']
+# agri_researchers = ['Zach Adam', 'Arie Altman', 'Avigdor Cahaner', 'Idan Efroni', 'Rivka Elbaum', 'Yonatan Elkind', 'Eyal Fridman',
+#                     'Eliezer Goldschmidt', 'Raphael Goren', 'Tamar Friedlander', 'Smadar Harpaz Saad', 'Shimon Lavee']
+# cs_avg = []
+# agri_avg = []
 #
-plt.figure()
-plt.plot(cs_avg, 'bo')
-plt.plot(agri_avg, 'ro')
-plt.show()
+# for researcher2 in cs_researchers:
+#     max_score = 0
+#     best_article1, best_article2 = '', ''
+#     score = 0
+#     print(researcher2)
+#     for article1 in researchers_articles[researcher1]:
+#         for article2 in researchers_articles[researcher2]:
+#             score += get_article_similarity(G, article1, article2)
+#
+#             if max_score < score:
+#                 max_score = score
+#                 best_article1 = article1
+#                 best_article2 = article2
+#     # cs_avg.append(score / len(researchers_articles[researcher1]) / len(researchers_articles[researcher2]))
+#     cs_avg.append(max_score)
+#     # print(f'Best score of {researcher1} and {researcher2} is {100 * score / len(researchers_articles[researcher1]) / len(researchers_articles[researcher2])}')
+#     # print(f'Best score of {researcher1} and {researcher2} is {max_score}:\t\t{best_article1}\t\t{best_article2}')
+#
+# for researcher2 in agri_researchers:
+#     max_score = 0
+#     best_article1, best_article2 = '', ''
+#     score = 0
+#     print(researcher2)
+#     for article1 in researchers_articles[researcher1]:
+#         for article2 in researchers_articles[researcher2]:
+#             score += get_article_similarity(G, article1, article2)
+#
+#             if max_score < score:
+#                 max_score = score
+#                 best_article1 = article1
+#                 best_article2 = article2
+#
+#     # agri_avg.append(score / len(researchers_articles[researcher1]) / len(researchers_articles[researcher2]))
+#     agri_avg.append(max_score)
+# #
+# plt.figure()
+# plt.plot(cs_avg, 'bo')
+# plt.plot(agri_avg, 'ro')
+# plt.show()
 
 # print(get_article_similarity(G, 'tomer tomer', 'barak mazor'))
 # print(get_article_similarity(G, 'high soil acidity, very low of nutrient availability  especially NPK', 'fruit trees agricultural'))
@@ -248,12 +271,38 @@ plt.show()
 # print(get_article_similarity(G, 'This paper focuses on a new way for students to deepen their knowledge in image processing', 'In the engineering curriculum, remote labs'))
 
 
-# matches = []
-# for researcher in researchers_in_other_faculties:
-#     score = 0
-#     for article1 in dafna_articles:
-#         for article2 in researcher_articles:
-#             score = max(get_article_similarity(G, article1, article2), score)
-#     matches.append(score)
-#
-# # take researchers with best 3 scores
+faculties = json.load(open('data/faculties.json', encoding='utf-8'))
+articles = json.load(open('data/researchers_articles.json', encoding='utf-8'))
+dafna = "Dafna Shahaf"
+researcher_faculty = faculties[dafna]
+researchers_in_other_faculties = []
+
+for researcher in faculties:
+    if faculties[researcher] != researcher_faculty:
+        researchers_in_other_faculties.append(researcher)
+
+matches = []
+for researcher in researchers_in_other_faculties[550:590]:
+    print(researcher)
+
+    best_match = None
+    for article1 in articles[dafna]:
+        score = 0
+        for article2 in articles[researcher]:
+            score += get_article_similarity(G, article1, article2)
+            # if best_match is None or score >= best_match[0]:
+            #     best_match = (score, researcher, article1, article2)
+
+        # todo remove this after we remove empty researchers
+        if len(articles[researcher]) != 0:
+            score /= len(articles[researcher])
+
+            if best_match is None or score >= best_match[0]:
+                best_match = (score, researcher, article1, "")
+
+    if best_match:
+        matches.append(best_match)
+
+matches.sort(key=lambda x: x[0], reverse=True)
+print(matches)
+# take researchers with best 3 scores
