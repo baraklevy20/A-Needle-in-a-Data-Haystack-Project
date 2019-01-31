@@ -10,6 +10,8 @@ class RandomArticlesSpider(scrapy.Spider):
     name = "random_articles_crawler"
 
     request_format = open('requests/get_random_articles_data.json', encoding='utf-8').read()
+
+    # The different topics the spider will search
     topics = ['Agriculture', 'Auxiliary sciences of history', 'Bibliography. Library science. Information resources',
               'Education', 'Fine Arts', 'General Works', 'Geography. Anthropology. Recreation',
               'History (General) and history of Europe', 'History America', 'Language and Literature', 'Law',
