@@ -1,16 +1,13 @@
-import scrapy
-from scrapy import cmdline, Request, signals
-import time
 import json
-import urllib.request
 
-BASE_URL = 'https://www.kickstarter.com/discover/categories/technology?page='
+import scrapy
+from scrapy import cmdline, signals
 
-# todo clean the code, remove kickstarter references
 
-class KickstarterSpider(scrapy.Spider):
+# The class is responsible of finding random articles on multiple topics
+class RandomArticlesSpider(scrapy.Spider):
     # Set the name of the spider
-    name = "kickstarter"
+    name = "random_articles_crawler"
 
     request_format = open('requests/get_random_articles_data.json', encoding='utf-8').read()
     topics = ['Agriculture', 'Auxiliary sciences of history', 'Bibliography. Library science. Information resources',
@@ -19,16 +16,15 @@ class KickstarterSpider(scrapy.Spider):
               'Medicine', 'Military Science', 'Music and books on Music', 'Naval Science',
               'Philosophy. Psychology. Religion', 'Political science', 'Science', 'Social Sciences', 'Technology']
 
-    # topics = ['Bibliography. Library science. Information resources']
-
     # This will store all of the projects the spider found
     articles = []
 
-    # todo use api and not endpoint directly
     # The start URL the spider will use
-    start_urls = list(map(lambda topic, topics=topics, request_format=request_format:
-                          'https://doaj.org/query/article/_search?ref=please-stop-using-this-endpoint-directly-use-the-api&source=' + request_format.replace(
-                              '%s', topic), topics))
+    base_url = 'https://doaj.org/query/article/_search'
+    ref = 'please-stop-using-this-endpoint-directly-use-the-api'  # The direct API offers search by multiple fields
+
+    start_urls = list(map(lambda topic, topics=topics, base_url=base_url, ref=ref, request_format=request_format:
+                          f'{base_url}?ref={ref}&source=' + request_format.replace('%s', topic), topics))
 
     custom_settings = {
         'DOWNLOAD_DELAY': 1,  # The delay between each page request
@@ -36,23 +32,35 @@ class KickstarterSpider(scrapy.Spider):
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
-        spider = super(KickstarterSpider, cls).from_crawler(crawler, *args, **kwargs)
+        # Initiate the crawler to use a custom spider closed signal
+        spider = super(RandomArticlesSpider, cls).from_crawler(crawler, *args, **kwargs)
         crawler.signals.connect(spider.spider_closed, signal=signals.spider_closed)
         return spider
 
+    # The function will get called once the spider is done crawling
     def spider_closed(self, spider):
-        # Save the JSON
+        # Save the articles as a JSON file
         open('data/random_articles.json', 'w', encoding='utf-8').write(json.dumps(
-            {
-                'articles': self.articles
-            },
-            indent=4, ensure_ascii=False))  # Indent the json with 4 spaces
+            self.articles,
+            indent=4,  # Indent the json with 4 spaces
+            ensure_ascii=False)  # Make sure we save every character
+        )
 
     # The spider gets here once it crawled a new page
     def parse(self, response):
-        self.articles.extend(list(map(lambda hit: hit['_source']['bibjson']['abstract'],
-                                      filter(lambda hit: hit['_source']['index']['language'] == ['English'] and 'abstract' in hit['_source']['bibjson'] and hit['_source']['bibjson']['abstract'] != '-',
-                                             json.loads(response.text)['hits']['hits']))))
+        self.articles.extend(
+            list(
+                # Get the abstract of the articles
+                map(lambda hit: hit['_source']['bibjson']['abstract'],
+                    # Get articles in English only with an abstract
+                    filter(
+                        lambda hit: hit['_source']['index']['language'] == ['English']
+                                    and 'abstract' in hit['_source']['bibjson'] and
+                                    hit['_source']['bibjson']['abstract'] != '-',
+                        json.loads(response.text)['hits']['hits'])
+                    )
+            )
+        )
 
 
 cmdline.execute(["scrapy", "runspider", "get_random_articles.py"])
