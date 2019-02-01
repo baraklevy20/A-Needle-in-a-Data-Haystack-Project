@@ -25,7 +25,7 @@ class titles():
 
 
 a = titles()
-b = a.title_getter(json.load(open('data/authors_names_to_id.json')))
+b = a.title_getter(json.load(open('data/researchers_ids.json')))
 result_file = open('data/researchers_articles.json', 'w', encoding='utf-8')
 result_file.write(json.dumps(
     b,

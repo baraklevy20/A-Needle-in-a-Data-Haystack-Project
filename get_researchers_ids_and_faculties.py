@@ -1,10 +1,9 @@
+import json
+import re
+
+import requests
 import scrapy
 from scrapy import cmdline, Request, signals
-import requests
-import time
-import json
-import urllib.request
-import re
 
 BASE_URL = 'http://www.yissum.co.il/find-experts?page='
 END_URL = '&k=&rk=&tag='
@@ -13,12 +12,14 @@ PROF = "Prof. "
 DR = "Dr. "
 
 
+# The class is responsible of finding the faculty of each researcher and the ID of each researcher on SemanticScholar
 class YissumSpider(scrapy.Spider):
     # Set the name of the spider
     name = "yissum"
 
     custom_settings = {
         'CONCURRENT_REQUESTS': 1,  # Use 1 thread to avoid spamming a website
+        'DOWNLOAD_DELAY': 1,  # The delay between each page request
         'CLOSESPIDER_PAGECOUNT': 46,  # The total number of pages to visit
     }
 
@@ -26,8 +27,7 @@ class YissumSpider(scrapy.Spider):
     currentPage = 0
 
     # This will store all of the projects the spider found
-    pages = []
-    allNames = []
+    names = []
     faculties = []
 
     # The start URL the spider will use
@@ -38,21 +38,17 @@ class YissumSpider(scrapy.Spider):
     get_id_by_author_request_data = json.load(open('requests/get_id_by_author_data.json', encoding='utf-8'))
     get_id_by_author_request_headers = json.load(open('requests/get_id_by_author_headers.json', encoding='utf-8'))
 
-    # When we found an item, we simply add it to the projects list
-    def process_item(self, item, spider):
-        self.pages.append(item)
-        return item
-
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
+        # Initiate the crawler to use a custom spider closed signal
         spider = super(YissumSpider, cls).from_crawler(crawler, *args, **kwargs)
         crawler.signals.connect(spider.spider_closed, signal=signals.spider_closed)
         return spider
 
     def spider_closed(self, spider):
-        # Find IDs
+        # Find the id of each researcher by searching 'SemanticScholar'
         names_to_ids = {}
-        for author_name in self.allNames[0:1]:
+        for author_name in self.names:
             self.get_id_by_author_request_data['queryString'] = '"' + author_name + '"'
             names_to_ids[author_name] = list(map(lambda author: int(author['id']), requests.post(
                 'https://www.semanticscholar.org/api/1/search',
@@ -60,8 +56,8 @@ class YissumSpider(scrapy.Spider):
                 headers=self.get_id_by_author_request_headers
             ).json()['matchedAuthors']))
 
-        # Save the names
-        result_file = open('data/authors_names_to_id.json', 'w', encoding='utf-8')
+        # Save the id's
+        result_file = open('data/researchers_ids.json', 'w', encoding='utf-8')
         result_file.write(json.dumps(
             names_to_ids,
             indent=4,  # Indent the json with 4 spaces
@@ -69,8 +65,8 @@ class YissumSpider(scrapy.Spider):
         )
         result_file.close()
 
-        # Save Faculties
-        result_file = open('data/faculties.json', 'w', encoding='utf-8')
+        # Save the faculties
+        result_file = open('data/researchers_faculties.json', 'w', encoding='utf-8')
         names_to_faculties = {}
 
         for i in range(len(self.allNames)):
@@ -117,4 +113,4 @@ class YissumSpider(scrapy.Spider):
         yield Request(url=BASE_URL + str(self.currentPage) + END_URL, callback=self.parse)
 
 
-cmdline.execute(["scrapy", "runspider", "get_researchers_ids.py"])
+cmdline.execute(["scrapy", "runspider", "get_researchers_ids_and_faculties.py"])
