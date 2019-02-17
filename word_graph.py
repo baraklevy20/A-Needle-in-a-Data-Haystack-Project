@@ -37,10 +37,19 @@ def stem_articles(articles):
 def generate_word_graph(articles):
     all_articles = []
 
+    # Get the English stop words
+    english_stopwords = stopwords.words('english')
+
+    # Create a new Porter stemmer
+    stemmer = nltk.stem.porter.PorterStemmer()
+
     for article_list in list(articles.values()):
         all_articles += article_list
         # articles.append(str.join(" ", article_list))
-        #     articles += json.load(open('data/random_articles.json', 'rb'))
+
+    random_articles = json.load(open('data/random_articles.json', 'rb'))
+    for article in random_articles:
+        all_articles.append(stem_word_list(article, english_stopwords, stemmer))
 
     # articles = []
     # for i in range(20):
@@ -136,7 +145,8 @@ def get_article_similarity(G, article1, article2):
     return weight_sum / len(article1)
 
 
-articles = stem_articles(json.load(open('data/researchers_articles.json', encoding='utf-8')))
+original_articles = json.load(open('data/researchers_articles.json', encoding='utf-8'))
+articles = stem_articles(original_articles)
 # G = nx.read_gml('data/word_graph.json')
 # print('done reading the graph')
 G = generate_word_graph(articles)
@@ -145,16 +155,16 @@ G = generate_word_graph(articles)
 start = time.time()
 
 # researcher1 = 'Shahal Abbo'
-# # researcher1 = 'Dafna Shahaf'
-# # researcher1 = 'Amir Shmueli'
-
+# researcher1 = 'Dafna Shahaf'
+# researcher1 = 'Amir Shmueli'
+#
 # cs_researchers = ['Omri Abend', 'Dorit Aharonov', 'Yair Bartal', 'Tsevi Beatus', 'Michael Ben-Or', 'Amit Daniely',
 #                   'Guy Kindler', 'Yuval Kochman', 'Orna Kupferman', 'Katrina Ligett', 'Scott Kirkpatrick', 'Matan Gavish']
 # agri_researchers = ['Zach Adam', 'Arie Altman', 'Avigdor Cahaner', 'Idan Efroni', 'Rivka Elbaum', 'Yonatan Elkind', 'Eyal Fridman',
 #                     'Eliezer Goldschmidt', 'Raphael Goren', 'Tamar Friedlander', 'Smadar Harpaz Saad', 'Shimon Lavee']
 # cs_avg = []
 # agri_avg = []
-
+#
 # for researcher2 in cs_researchers:
 #     max_score = 0
 #     best_article1, best_article2 = '', ''
@@ -163,7 +173,7 @@ start = time.time()
 #     for article1 in articles[researcher1]:
 #         for article2 in articles[researcher2]:
 #             score = get_article_similarity(G, article1, article2)
-
+#
 #             if max_score < score:
 #                 max_score = score
 #                 best_article1 = article1
@@ -172,7 +182,7 @@ start = time.time()
 #     cs_avg.append(max_score)
 #     # print(f'Best score of {researcher1} and {researcher2} is {100 * score / len(researchers_articles[researcher1]) / len(researchers_articles[researcher2])}')
 #     # print(f'Best score of {researcher1} and {researcher2} is {max_score}:\t\t{best_article1}\t\t{best_article2}')
-
+#
 # for researcher2 in agri_researchers:
 #     max_score = 0
 #     best_article1, best_article2 = '', ''
@@ -181,16 +191,16 @@ start = time.time()
 #     for article1 in articles[researcher1]:
 #         for article2 in articles[researcher2]:
 #             score = get_article_similarity(G, article1, article2)
-
+#
 #             if max_score < score:
 #                 max_score = score
 #                 best_article1 = article1
 #                 best_article2 = article2
-
+#
 #     # agri_avg.append(score / len(researchers_articles[researcher1]) / len(researchers_articles[researcher2]))
 #     agri_avg.append(max_score)
-
-# print(f"time:{time.time() - start} seconds")
+#
+# # print(f"time:{time.time() - start} seconds")
 # plt.figure()
 # plt.plot(cs_avg, 'bo')
 # plt.plot(agri_avg, 'ro')
@@ -198,7 +208,7 @@ start = time.time()
 
 
 faculties = json.load(open('data/researchers_faculties.json', encoding='utf-8'))
-dafna = "Shmuel Peleg"
+dafna = "Dafna Shahaf"
 researcher_faculty = faculties[dafna]
 researchers_in_other_faculties = []
 
@@ -214,29 +224,61 @@ for i, researcher in enumerate(researchers_in_other_faculties):
 
     best_match = None
     total_score = 0
-    for article1 in articles[dafna]:
+    for j, article1 in enumerate(articles[dafna]):
         score = 0
         for article2 in articles[researcher]:
-            #             score = get_article_similarity(G, article1, article2)
-            score = max(get_article_similarity(G, article1, article2), score)
-        total_score += score
-    #         score += len(articles[researcher])
-    #         if best_match is None or score > best_match[0]:
-    #             best_match = (score, researcher, article1, "")
-    #             if best_match is None or score > best_match[0]:
-    #               best_match = (score, researcher, article1, article2)
+            score += get_article_similarity(G, article1, article2)
 
-    matches.append((total_score / len(articles[dafna]), researcher, "", ""))
-#     if best_match:
-#         matches.append(best_match)
+        score /= len(articles[researcher])
+        if best_match is None or score > best_match[0]:
+            best_match = (score, researcher, article1, "", j)
+    if best_match:
+        matches.append(best_match)
+
+
+# for i, researcher in enumerate(researchers_in_other_faculties):
+#     print(f'{i}/{len(researchers_in_other_faculties)} - {researcher}')
+#
+#     best_match = None
+#     total_score = 0
+#     for article1 in articles[dafna]:
+#         score = 0
+#         for article2 in articles[researcher]:
+#             score = max(get_article_similarity(G, article1, article2), score)
+#         total_score += score
+#
+#     matches.append((total_score / len(articles[dafna]), researcher, "", "", i))
+
+
 
 matches.sort(key=lambda x: x[0], reverse=True)
-for match in matches:
-    print(match)
-print(f"time:{time.time() - start} seconds")
-# take researchers with best 3 scores
 
-print(len(G.nodes))
-print(len(G.edges))
+# for match in matches:
+#     print(str(match) + " " + articles[dafna][match[4]])
+# print(f"time:{time.time() - start} seconds")
+
+for i in range(3):
+    researcher = matches[i][1]
+    researcher_matches = []
+
+    print(researcher)
+    for j, article in enumerate(articles[researcher]):
+        for k, dafna_article in enumerate(articles[dafna]):
+            researcher_matches.append((original_articles[dafna][k], original_articles[researcher][j], get_article_similarity(G, dafna_article, article)))
+        # researcher_matches.append((original_articles[researcher][j], get_article_similarity(G, articles[dafna][matches[i][4]], article)))
+    researcher_matches.sort(key=lambda x: x[2], reverse=True)
+
+    print(researcher)
+    for j in range(min(3, len(articles[researcher]))):
+        print(researcher_matches[j][1] + "\t\t" + researcher_matches[j][0])
+
+    print()
+    print()
+#
+#
+# # take researchers with best 3 scores
+#
+# print(len(G.nodes))
+# print(len(G.edges))
 # s = stem_articles(["banana banana computer orange", "computer banana"])
 # print(get_article_similarity(G, s[0], s[1]))
